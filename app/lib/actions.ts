@@ -29,16 +29,18 @@ export type State = {
 		status?: string[];
 	};
 	message?: string | null;
+	formData?: FormData | null;
 };
 
 export async function createInvoice(prevState: State, formData: FormData) {
-	console.log('✌️prevState --->', prevState);
+	console.log('✌️formData --->', formData);
 	const rawFormData = Object.fromEntries(formData.entries());
 	const validatedFields = CreateInvoice.safeParse(rawFormData);
 	if (!validatedFields.success) {
 		return {
 			errors: validatedFields.error.flatten().fieldErrors,
 			message: 'Missing Fields. Failed to Create Invoice.',
+			formData,
 		};
 	}
 	const { customerId, amount, status } = validatedFields.data;
@@ -51,7 +53,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
 	  `;
 	} catch (error) {
 		console.error(error);
-		// return { message: 'Database Error: Failed to Create Invoice' };
+		return { message: 'Database Error: Failed to Create Invoice', formData };
 	}
 	revalidatePath('/dashboard/invoices');
 	redirect('/dashboard/invoices');
@@ -59,9 +61,19 @@ export async function createInvoice(prevState: State, formData: FormData) {
 
 const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
-export async function updateInvoice(id: string, formData: FormData) {
-	console.log(id, formData);
+export async function updateInvoice(
+	id: string,
+	prevState: State,
+	formData: FormData
+) {
 	const rawFormData = Object.fromEntries(formData.entries());
+	const validatedFields = UpdateInvoice.safeParse(formData.entries());
+	if (!validatedFields.success) {
+		return {
+			errors: validatedFields.error.flatten().fieldErrors,
+			message: 'Missing Fields. Failed to Create Invoice.',
+		};
+	}
 	const { customerId, amount, status } = UpdateInvoice.parse(rawFormData);
 	const amountInCents = amount * 100;
 	try {
